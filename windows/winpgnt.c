@@ -49,6 +49,9 @@
 #define IDM_ADDKEY   0x0030
 #define IDM_HELP     0x0040
 #define IDM_ABOUT    0x0050
+#ifdef USE_CAPI
+#define IDM_ADDCERT  0x0070
+#endif /* USE_CAPI */
 
 #define APPNAME "Pageant"
 
@@ -69,6 +72,7 @@ static filereq *keypath = NULL;
 #define IDM_SESSIONS_MAX  0x2000
 #define PUTTY_REGKEY      "Software\\SimonTatham\\PuTTY\\Sessions"
 #define PUTTY_DEFAULT     "Default%20Settings"
+#define PUTTYAGNT_REGKEY  "Software\\SimonTatham\\PuTTY\\PAStartkeys"
 static int initial_menuitems_count;
 
 /*
@@ -410,10 +414,12 @@ static void add_keyfile(Filename *filename)
 	void *blob;
 	unsigned char *keylist, *p;
 	int i, nkeys, bloblen, keylistlen;
+	HKEY hkey;
+	char* fullcertpath = NULL;	
 
 	if (type == SSH_KEYTYPE_SSH1) {
 	    if (!rsakey_pubblob(filename, &blob, &bloblen, NULL, &error)) {
-		char *msg = dupprintf("Couldn't load private key (%s)", error);
+		char *msg = dupprintf("Couldn't load private key. If the priate key is stored on a smartcard, please check if smartcard is in the reader.  (%s)", error);
 		message_box(msg, APPNAME, MB_OK | MB_ICONERROR,
 			    HELPCTXID(errors_cantloadkey));
 		sfree(msg);
@@ -422,8 +428,28 @@ static void add_keyfile(Filename *filename)
 	    keylist = get_keylist1(&keylistlen);
 	} else {
 	    unsigned char *blob2;
+#ifdef USE_CAPI
+		if (0 == strncmp("cert://", filename->path, 7)) {
+			blob = ssh2_userkey_loadpub(filename, NULL, &bloblen,
+				&comment, &error);
+			if (blob) {
+				sfree(filename->path);
+				filename->path = comment;
+				comment = NULL;
+				// Add new selected certificate to registry
+				fullcertpath = dupprintf(PUTTYAGNT_REGKEY"\\%s", filename->path);
+				if (!(RegCreateKey(HKEY_CURRENT_USER, fullcertpath , &hkey) == ERROR_SUCCESS)) {
+					MessageBox(NULL, "Could not create registry entry with selected certificate!", "ERROR", MB_ICONQUESTION | MB_OK);
+				}				
+			}
+		}
+		else {		
+#endif /* USE_CAPI */
 	    blob = ssh2_userkey_loadpub(filename, NULL, &bloblen,
 					NULL, &error);
+#ifdef USE_CAPI
+		}
+#endif /* USE_CAPI */					
 	    if (!blob) {
 		char *msg = dupprintf("Couldn't load private key (%s)", error);
 		message_box(msg, APPNAME, MB_OK | MB_ICONERROR,
@@ -789,6 +815,24 @@ static void *make_keylist2(int *length)
     return ret;
 }
 
+
+static int confirm_key_usage(char* fingerprint, char* comment) {
+	const char* title = "Confirm SSH Key usage";
+	char* message = NULL;
+	int result = 0;
+
+	message = dupprintf("Allow authentication with key with fingerprint\n%s\ncomment: %s", fingerprint, comment);
+	result = MessageBox(NULL, message, title, MB_ICONQUESTION | MB_YESNO);
+	sfree(message);
+
+	if (result != IDYES) {
+		return 0;
+	} else {
+		return 1;
+	}
+}
+
+
 /*
  * Acquire a keylist1 from the primary Pageant; this means either
  * calling make_keylist1 (if that's us) or sending a message to the
@@ -936,6 +980,7 @@ static void answer_msg(void *msg)
 	    unsigned char response_source[48], response_md5[16];
 	    struct MD5Context md5c;
 	    int i, len;
+		char fingerprint[100];
 
 	    p += 4;
 	    i = ssh1_read_bignum(p, msgend - p, &reqkey.exponent);
@@ -971,6 +1016,10 @@ static void answer_msg(void *msg)
 		freebn(challenge);
 		goto failure;
 	    }
+		rsa_fingerprint(fingerprint, sizeof(fingerprint), key);
+		if (! confirm_key_usage(fingerprint, key->comment)) {
+	      goto failure;
+	    } 
 	    response = rsadecrypt(challenge, key);
 	    for (i = 0; i < 32; i++)
 		response_source[i] = bignum_byte(response, 31 - i);
@@ -1024,6 +1073,9 @@ static void answer_msg(void *msg)
 	    key = find234(ssh2keys, &b, cmpkeys_ssh2_asymm);
 	    if (!key)
 		goto failure;
+		if (! confirm_key_usage( key->alg->fingerprint(key->data) , key->comment)) {
+	      goto failure;
+	    }		
 	    signature = key->alg->sign(key->data, data, datalen, &siglen);
 	    len = 5 + 4 + siglen;
 	    PUT_32BIT(ret, len - 4);
@@ -1428,6 +1480,74 @@ static int cmpkeys_ssh2_asymm(void *av, void *bv)
     return c;
 }
 
+
+#ifdef USE_CAPI
+/*
+ * Add a key from a Windows certificate
+ */
+static void prompt_add_capikey(void)
+{
+	Filename *fn = filename_from_str("cert://*");
+	add_keyfile(fn);
+	filename_free(fn);
+	keylist_update();
+}
+
+/*
+ * Copy key to clipboard in ssh authorized_keys format
+ */
+static void key_to_clipboard2(struct ssh2_userkey *key)
+{
+    unsigned char *pub_blob;
+    char *buffer, *p, *psz;
+    int pub_len, i;
+	HGLOBAL hClipBuffer;
+
+	pub_blob = key->alg->public_blob(key->data, &pub_len);
+    buffer = snewn(strlen(key->alg->name) + 4 * ((pub_len + 2) / 3) + strlen(key->comment) + 3, char);
+    strcpy(buffer, key->alg->name);
+    p = buffer + strlen(buffer);
+    *p++ = ' ';
+    i = 0;
+    while (i < pub_len) {
+		int n = (pub_len - i < 3 ? pub_len - i : 3);
+		base64_encode_atom(pub_blob + i, n, p);
+		i += n;
+		p += 4;
+     }
+     *p++ = ' ';
+    strcpy(p, key->comment);
+	if(OpenClipboard(NULL)) {
+		hClipBuffer = GlobalAlloc(GMEM_MOVEABLE, strlen(buffer) + 1);
+		if(hClipBuffer) {
+ 			psz = (char *)GlobalLock(hClipBuffer);
+			strcpy(psz, buffer);
+ 			GlobalUnlock(hClipBuffer);
+ 			EmptyClipboard();
+ 			SetClipboardData(CF_TEXT, hClipBuffer);
+ 		}
+ 		CloseClipboard();
+ 	}
+     sfree(pub_blob);
+     sfree(buffer);
+ }
+ 
+ /*
+  * Copy 1'st selected key to clipboard in ssh authorized_keys format
+  */
+ static void key_to_clipboard(HWND hwnd)
+ {
+ 	int numSelected, *selectedArray;
+ 	if((numSelected = SendDlgItemMessage(hwnd, 100, LB_GETSELCOUNT, 0, 0)) > 0) {
+ 		selectedArray = snewn(numSelected, int);
+ 		SendDlgItemMessage(hwnd, 100, LB_GETSELITEMS, numSelected, (WPARAM)selectedArray);
+ 		key_to_clipboard2((struct ssh2_userkey*)index234(ssh2keys, selectedArray[0]));
+ 		sfree(selectedArray);
+ 	}
+ }
+#endif /* USE_CAPI */
+ 
+
 /*
  * Prompt for a key file to add, and add it.
  */
@@ -1530,6 +1650,13 @@ static int CALLBACK KeyListProc(HWND hwnd, UINT msg,
 	    keylist = NULL;
 	    DestroyWindow(hwnd);
 	    return 0;
+#ifdef USE_CAPI
+	  case 100:		       /* key list */
+		if (HIWORD(wParam) == LBN_DBLCLK) {
+			key_to_clipboard(hwnd);
+		}
+		return 0;
+#endif /* USE_CAPI */		
 	  case 101:		       /* add key */
 	    if (HIWORD(wParam) == BN_CLICKED ||
 		HIWORD(wParam) == BN_DOUBLECLICKED) {
@@ -1569,6 +1696,8 @@ static int CALLBACK KeyListProc(HWND hwnd, UINT msg,
 		itemNum = numSelected - 1;
 		rCount = count234(rsakeys);
 		sCount = count234(ssh2keys);
+		int result=0;
+		HKEY hkey;		
 		
 		/* go through the non-rsakeys until we've covered them all, 
 		 * and/or we're out of selected items to check. note that
@@ -1580,6 +1709,9 @@ static int CALLBACK KeyListProc(HWND hwnd, UINT msg,
 			
 			if (selectedArray[itemNum] == rCount + i) {
 				del234(ssh2keys, skey);
+				if (RegOpenKey(HKEY_CURRENT_USER, PUTTYAGNT_REGKEY, &hkey) != ERROR_SUCCESS)
+					result = MessageBox(NULL, PUTTYAGNT_REGKEY , "Failed to open Registry Key", MB_ICONQUESTION | MB_YESNO);
+				RegDeleteKey(hkey, skey->comment);					
 				skey->alg->freekey(skey->data);
 				sfree(skey);
 			   	itemNum--; 
@@ -1592,6 +1724,9 @@ static int CALLBACK KeyListProc(HWND hwnd, UINT msg,
 
 			if(selectedArray[itemNum] == i) {
 				del234(rsakeys, rkey);
+				if (RegOpenKey(HKEY_CURRENT_USER, PUTTYAGNT_REGKEY, &hkey) != ERROR_SUCCESS)
+					result = MessageBox(NULL, PUTTYAGNT_REGKEY , "Failed to open Registry Key", MB_ICONQUESTION | MB_YESNO);
+				RegDeleteKey(hkey, skey->comment);					
 				freersakey(rkey);
 				sfree(rkey);
 				itemNum--;
@@ -1608,6 +1743,12 @@ static int CALLBACK KeyListProc(HWND hwnd, UINT msg,
 		launch_help(hwnd, WINHELP_CTX_pageant_general);
             }
 	    return 0;
+	  case 104:		       /* CERT */
+            if (HIWORD(wParam) == BN_CLICKED ||
+                HIWORD(wParam) == BN_DOUBLECLICKED){
+					prompt_add_capikey();
+            }
+	    return 0;				
 	}
 	return 0;
       case WM_HELP:
@@ -1659,6 +1800,27 @@ static BOOL AddTrayIcon(HWND hwnd)
     if (hicon) DestroyIcon(hicon);
     
     return res;
+}
+
+/* Load the stored keys at startup */
+static void load_stored_keys(void)
+{
+    HKEY hkey;
+    TCHAR buf[MAX_PATH + 1];
+    int index_key;
+	char* certstring = NULL;
+	
+    if(ERROR_SUCCESS != RegOpenKey(HKEY_CURRENT_USER, PUTTYAGNT_REGKEY, &hkey))
+	return;
+    index_key = 0;
+    while(ERROR_SUCCESS == RegEnumKey(hkey, index_key, buf, MAX_PATH)) {
+		// For each certificate
+		certstring = dupprintf("cert://%s", buf);
+	    add_keyfile(filename_from_str(certstring));;
+	sfree(certstring);
+	index_key++;
+	}
+    RegCloseKey(hkey);
 }
 
 /* Update the saved-sessions menu. */
@@ -1846,6 +2008,11 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message,
 	    }
 	    prompt_add_keyfile();
 	    break;
+#ifdef USE_CAPI
+	  case IDM_ADDCERT:
+	    prompt_add_capikey();
+	    break;
+#endif /* USE_CAPI */		
 	  case IDM_ABOUT:
 	    if (!aboutbox) {
 		aboutbox = CreateDialog(hinst, MAKEINTRESOURCE(213),
@@ -2154,7 +2321,11 @@ int WINAPI WinMain(HINSTANCE inst, HINSTANCE prev, LPSTR cmdline, int show)
 	    added_keys = TRUE;
 	}
     }
-
+	
+	// Load all stored Keys from registry if there are any
+	load_stored_keys();
+	
+	
     /*
      * Forget any passphrase that we retained while going over
      * command line keyfiles.
@@ -2224,6 +2395,9 @@ int WINAPI WinMain(HINSTANCE inst, HINSTANCE prev, LPSTR cmdline, int show)
     AppendMenu(systray_menu, MF_ENABLED, IDM_VIEWKEYS,
 	   "&View Keys");
     AppendMenu(systray_menu, MF_ENABLED, IDM_ADDKEY, "Add &Key");
+#ifdef USE_CAPI
+	AppendMenu(systray_menu, MF_ENABLED, IDM_ADDCERT, "Add &Certificate");
+#endif /* USE_CAPI */	
     AppendMenu(systray_menu, MF_SEPARATOR, 0, 0);
     if (has_help())
 	AppendMenu(systray_menu, MF_ENABLED, IDM_HELP, "&Help");

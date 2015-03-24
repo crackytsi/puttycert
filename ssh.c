@@ -8810,6 +8810,12 @@ static void do_ssh2_authconn(Ssh ssh, unsigned char *in, int inlen,
 		if (s->publickey_blob) {
 		    s->publickey_encrypted =
 			ssh2_userkey_encrypted(s->keyfile, NULL);
+#ifdef USE_CAPI
+ 			if (s->publickey_comment && 0 == strncmp("cert://", s->publickey_comment, 7)) {
+ 				sfree(s->keyfile->path);
+ 				s->keyfile->path = strdup(s->publickey_comment);
+ 			}
+#endif /* USE_CAPI */			
 		} else {
 		    char *msgbuf;
 		    logeventf(ssh, "Unable to load private key (%s)", 

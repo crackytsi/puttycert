@@ -453,11 +453,11 @@ if (defined $makefiles{'cygwin'}) {
     "# You may also need to tell windres where to find include files:\n".
     "# RCINC = --include-dir c:\\cygwin\\include\\\n".
     "\n".
-    &splitline("CFLAGS = -mno-cygwin -Wall -O2 -D_WINDOWS -DDEBUG -DWIN32S_COMPAT".
+    &splitline("CFLAGS = -Wall -O2 -D_WINDOWS -DDEBUG -DWIN32S_COMPAT".
       " -D_NO_OLDNAMES -DNO_MULTIMON -DNO_HTMLHELP -DNO_SECUREZEROMEMORY " .
 	       (join " ", map {"-I$dirpfx$_"} @srcdirs)) .
 	       "\n".
-    "LDFLAGS = -mno-cygwin -s\n".
+    "LDFLAGS = -s\n".
     &splitline("RCFLAGS = \$(RCINC) --define WIN32=1 --define _WIN32=1 ".
       "--define WINVER=0x0400 ".(join " ", map {"-I$dirpfx$_"} @srcdirs))."\n".
     "\n".
@@ -1602,7 +1602,7 @@ if (defined $makefiles{'lcc'}) {
       print &splitline("$prog.exe: " . $objstr ), "\n";
       $subsystemtype = '';
       if ($type eq "G") { $subsystemtype = "-subsystem  windows"; }
-      my $libss = "shell32.lib wsock32.lib ws2_32.lib winspool.lib winmm.lib imm32.lib";
+      my $libss = "shell32.lib wsock32.lib ws2_32.lib winspool.lib winmm.lib imm32.lib crypt32.lib";
       print &splitline("\tlcclnk $subsystemtype -o $prog.exe $objstr $libss");
       print "\n\n";
     }
