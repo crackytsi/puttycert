@@ -586,7 +586,28 @@ struct ssh2_userkey *ssh2_load_userkey(const Filename *filename,
     int i, is_mac, old_fmt;
     int passlen = passphrase ? strlen(passphrase) : 0;
     const char *error = NULL;
+	
+  
+#ifdef USE_CAPI
+	if(0 == strncmp("cert://", filename->path, 7)) {
+		alg = find_pubkey_alg("ssh-rsa");
+		ret = snew(struct ssh2_userkey);
+		ret->alg = alg;
+		public_blob_len = strlen(filename->path);
+		public_blob = (unsigned char*)filename->path;
+		ret->data = alg->openssh_createkey(&public_blob, &public_blob_len);
+		if(!ret->data) {
+			sfree(ret);
+			error = "load key from certificate failed";
+			return NULL;
+		}
+		ret->comment = dupstr((((struct RSAKey*)ret->data)->comment) ? 
+			(((struct RSAKey*)ret->data)->comment) : "");
+		return ret;
+	}
+#endif /* USE_CAPI */
 
+	
     ret = NULL;			       /* return NULL for most errors */
     encryption = comment = mac = NULL;
     public_blob = private_blob = NULL;
@@ -844,6 +865,26 @@ unsigned char *ssh2_userkey_loadpub(const Filename *filename, char **algorithm,
     int i;
     const char *error = NULL;
     char *comment;
+	
+#ifdef USE_CAPI
+	struct RSAKey *key;
+	if(0 == strncmp("cert://", filename->path, 7)) {
+		alg = find_pubkey_alg("ssh-rsa");
+		if(algorithm) { *algorithm = alg->name; }
+		public_blob_len = strlen(filename->path);
+		public_blob = (unsigned char*)filename->path;
+		key = (struct RSAKey*)alg->openssh_createkey(&public_blob, &public_blob_len);
+		if(!key) {
+ 			*errorstr = "load key from certificate failed";
+ 			return NULL;
+ 		}
+ 		if(commentptr) { *commentptr = dupstr(key->comment); }
+ 		public_blob = alg->public_blob(key, pub_blob_len);
+ 		alg->freekey(key);
+ 		return public_blob;
+ 	}
+#endif /* USE_CAPI */
+
 
     public_blob = NULL;
 
@@ -1156,6 +1197,13 @@ int key_type(const Filename *filename)
     const char sshcom_sig[] = "---- BEGIN SSH2 ENCRYPTED PRIVAT";
     const char openssh_sig[] = "-----BEGIN ";
     int i;
+	
+#ifdef USE_CAPI
+	if(0 == strncmp("cert://", filename->path, 7)) {
+		return SSH_KEYTYPE_SSH2;
+	}
+#endif /* USE_CAPI */
+
 
     fp = f_open(filename, "r", FALSE);
     if (!fp)
