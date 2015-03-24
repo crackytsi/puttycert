@@ -1743,12 +1743,18 @@ static int CALLBACK KeyListProc(HWND hwnd, UINT msg,
 		launch_help(hwnd, WINHELP_CTX_pageant_general);
             }
 	    return 0;
-	  case 104:		       /* CERT */
+	  case 104:		       /* Add CERT */
             if (HIWORD(wParam) == BN_CLICKED ||
                 HIWORD(wParam) == BN_DOUBLECLICKED){
 					prompt_add_capikey();
             }
 	    return 0;				
+	  case 105:		       /* CPY CERT */
+            if (HIWORD(wParam) == BN_CLICKED ||
+                HIWORD(wParam) == BN_DOUBLECLICKED){
+					key_to_clipboard(hwnd);
+            }
+	    return 0;
 	}
 	return 0;
       case WM_HELP:

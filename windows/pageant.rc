@@ -29,9 +29,10 @@ FONT 8, "MS Shell Dlg"
 BEGIN
     LISTBOX 100, 10, 10, 530, 155,
         LBS_EXTENDEDSEL | LBS_HASSTRINGS | LBS_USETABSTOPS | WS_VSCROLL | WS_TABSTOP
-    PUSHBUTTON "&Add Key", 101, 155, 162, 60, 14
-    PUSHBUTTON "&Add Certificate", 104, 235, 162, 60, 14	
-    PUSHBUTTON "&Remove Key", 102, 315, 162, 60, 14
+    PUSHBUTTON "&Add Key",          101, 115, 162, 60, 14
+    PUSHBUTTON "&Add Certificate",  104, 195, 162, 60, 14	
+    PUSHBUTTON "&Copy to clipboard", 105, 275, 162, 60, 14		
+    PUSHBUTTON "&Remove Key",       102, 355, 162, 60, 14
     PUSHBUTTON "&Help", 103, 10, 182, 50, 14
     DEFPUSHBUTTON "&Close", IDOK, 239, 182, 50, 14
 END
