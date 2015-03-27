@@ -821,13 +821,20 @@ static int confirm_key_usage(char* fingerprint, char* comment) {
 	char* message = NULL;
 	int result = 0;
 
-	message = dupprintf("Allow authentication with key with fingerprint\n%s\ncomment: %s", fingerprint, comment);
-	result = MessageBox(NULL, message, title, MB_ICONQUESTION | MB_YESNO);
+        message = dupprintf("Do you want to cache authorization for 5 minutes using key fingerprint\n%s\ncomment: %s?\n\nClick abort to deny this authentication request", fingerprint, comment);
+        result = MessageBox(NULL, message, title, MB_ICONQUESTION | MB_YESNOCANCEL);
 	sfree(message);
 
 	if (result != IDYES) {
-		return 0;
+               if (result != IDNO) {
+                       // Abort Button
+                       return 0;
+               } else {
+                       // No Button
+                       return 1;
+               }
 	} else {
+		// Yes Button
 		return 1;
 	}
 }
@@ -1017,9 +1024,9 @@ static void answer_msg(void *msg)
 		goto failure;
 	    }
 		rsa_fingerprint(fingerprint, sizeof(fingerprint), key);
-		if (! confirm_key_usage(fingerprint, key->comment)) {
-	      goto failure;
-	    } 
+		if ( (!(noconfirm == 1)) && (! confirm_key_usage( fingerprint, key->comment))) {
+	      		goto failure;
+	     	} 
 	    response = rsadecrypt(challenge, key);
 	    for (i = 0; i < 32; i++)
 		response_source[i] = bignum_byte(response, 31 - i);
@@ -1073,9 +1080,9 @@ static void answer_msg(void *msg)
 	    key = find234(ssh2keys, &b, cmpkeys_ssh2_asymm);
 	    if (!key)
 		goto failure;
-		if (! confirm_key_usage( key->alg->fingerprint(key->data) , key->comment)) {
-	      goto failure;
-	    }		
+		if ( (!(noconfirm == 1)) && (! confirm_key_usage( key->alg->fingerprint(key->data) , key->comment))) {
+	      		goto failure;
+	    	}		
 	    signature = key->alg->sign(key->data, data, datalen, &siglen);
 	    len = 5 + 4 + siglen;
 	    PUT_32BIT(ret, len - 4);
@@ -1937,6 +1944,12 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message,
     static UINT msgTaskbarCreated = 0;
 
     switch (message) {
+      case WM_TIMER:
+         noconfirm = 0;
+         KillTimer(hwnd, 1);
+         MessageBox(hwnd, "From now on, each authorization must be confirmed again!", "Authorization Expired", MB_OK);
+         break;
+
       case WM_CREATE:
         msgTaskbarCreated = RegisterWindowMessage(_T("TaskbarCreated"));
         break;
@@ -2018,6 +2031,11 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message,
 	  case IDM_ADDCERT:
 	    prompt_add_capikey();
 	    break;
+	  case IDM_TIMER:
+            noconfirm = 1;
+            KillTimer(hwnd, 1);
+            SetTimer(hwnd, 1, 300000, NULL);
+            break;
 #endif /* USE_CAPI */		
 	  case IDM_ABOUT:
 	    if (!aboutbox) {
@@ -2403,6 +2421,8 @@ int WINAPI WinMain(HINSTANCE inst, HINSTANCE prev, LPSTR cmdline, int show)
     AppendMenu(systray_menu, MF_ENABLED, IDM_ADDKEY, "Add &Key");
 #ifdef USE_CAPI
 	AppendMenu(systray_menu, MF_ENABLED, IDM_ADDCERT, "Add &Certificate");
+        AppendMenu(systray_menu, MF_SEPARATOR, 0, 0);
+        AppendMenu(systray_menu, MF_ENABLED, IDM_TIMER, "Accept all authorizations for 5 &min");
 #endif /* USE_CAPI */	
     AppendMenu(systray_menu, MF_SEPARATOR, 0, 0);
     if (has_help())
