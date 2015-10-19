@@ -2382,17 +2382,15 @@ PuTTY supports a variety of SSH-2 key exchange methods, and allows you
 to choose which one you prefer to use; configuration is similar to
 cipher selection (see \k{config-ssh-encryption}).
 
-PuTTY currently supports the following key exchange methods:
+PuTTY currently supports the following varieties of \i{Diffie-Hellman key
+exchange}:
 
-\b \q{ECDH}: \i{elliptic curve} \i{Diffie-Hellman key exchange}.
+\b \q{Group 14}: a well-known 2048-bit group.
 
-\b \q{Group 14}: Diffie-Hellman key exchange with a well-known
-2048-bit group.
-
-\b \q{Group 1}: Diffie-Hellman key exchange with a well-known
-1024-bit group. This is less secure \#{FIXME better words} than
-group 14, but may be faster with slow client or server machines,
-and may be the only method supported by older server software.
+\b \q{Group 1}: a well-known 1024-bit group. This is less secure
+\#{FIXME better words} than group 14, but may be faster with slow
+client or server machines, and may be the only method supported by
+older server software.
 
 \b \q{\ii{Group exchange}}: with this method, instead of using a fixed
 group, PuTTY requests that the server suggest a group to use for key
@@ -2400,9 +2398,9 @@ exchange; the server can avoid groups known to be weak, and possibly
 invent new ones over time, without any changes required to PuTTY's
 configuration. We recommend use of this method, if possible.
 
-\b \q{\i{RSA key exchange}}: this requires much less computational
-effort on the part of the client, and somewhat less on the part of
-the server, than Diffie-Hellman key exchange.
+In addition, PuTTY supports \i{RSA key exchange}, which requires much less
+computational effort on the part of the client, and somewhat less on
+the part of the server, than Diffie-Hellman key exchange.
 
 If the first algorithm PuTTY finds is below the \q{warn below here}
 line, you will see a warning box when you make the connection, similar
@@ -3130,7 +3128,7 @@ you do the same on Linux, you can also use it with IPv4. However,
 ticking \q{Auto} should always give you a port which you can connect
 to using either protocol.
 
-\H{config-ssh-bugs} \I{SSH server bugs}The Bugs panel
+\H{config-ssh-bugs} \I{SSH server bugs}The Bugs and More Bugs panels
 
 Not all SSH servers work properly. Various existing servers have
 bugs in them, which can make it impossible for a client to talk to
@@ -3144,9 +3142,10 @@ has been deliberately configured to conceal its version number, or
 if the server is a version which PuTTY's bug database does not know
 about, then PuTTY will not know what bugs to expect.
 
-The Bugs panel allows you to manually configure the bugs PuTTY
-expects to see in the server. Each bug can be configured in three
-states:
+The Bugs and More Bugs panels (there are two because we have so many
+bug compatibility modes) allow you to manually configure the bugs
+PuTTY expects to see in the server. Each bug can be configured in
+three states:
 
 \b \q{Off}: PuTTY will assume the server does not have the bug.
 
@@ -3387,6 +3386,23 @@ possible that when connecting to such a server it might receive a
 reply to a request after it thinks the channel has entirely closed,
 and terminate with an error along the lines of \q{Received
 \cw{SSH2_MSG_CHANNEL_FAILURE} for nonexistent channel 256}.
+
+\S{config-ssh-bug-oldgex2} \q{Only supports pre-RFC4419 SSH-2 DH GEX}
+
+\cfg{winhelp-topic}{ssh.bugs.oldgex2}
+
+The SSH key exchange method that uses Diffie-Hellman group exchange
+was redesigned after its original release, to use a slightly more
+sophisticated setup message. Almost all SSH implementations switched
+over to the new version. (PuTTY was one of the last.) A few old
+servers still only support the old one.
+
+If this bug is detected, and the client and server negotiate
+Diffie-Hellman group exchange, then PuTTY will send the old message
+now known as \cw{SSH2_MSG_KEX_DH_GEX_REQUEST_OLD} in place of the new
+\cw{SSH2_MSG_KEX_DH_GEX_REQUEST}.
+
+This is an SSH-2-specific bug.
 
 \H{config-serial} The Serial panel
 

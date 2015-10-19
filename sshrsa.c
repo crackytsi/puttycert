@@ -425,7 +425,7 @@ int rsa_verify(struct RSAKey *key)
 	}
 #endif /* _WINDOWS */
 #endif /* USE_CAPI */
-
+	
     /* n must equal pq. */
     n = bigmul(key->p, key->q);
     cmp = bignum_cmp(n, key->modulus);
@@ -729,7 +729,7 @@ static void *rsa2_openssh_createkey(unsigned char **blob, int *len)
 		return capi_load_key(blob, len);
 	}
 #endif /* _WINDOWS */
-#endif /* USE_CAPI */
+#endif /* USE_CAPI */	
 
     rsa = snew(struct RSAKey);
     rsa->comment = NULL;
@@ -927,7 +927,7 @@ static unsigned char *rsa2_sign(void *key, char *data, int datalen,
 		out = capi_rsa2_sign(rsa, data, datalen);
 	} else {
 #endif /* _WINDOWS */
-#endif /* USE_CAPI */
+#endif /* USE_CAPI */	
 
     SHA_Simple(data, datalen, hash);
 
@@ -952,7 +952,7 @@ static unsigned char *rsa2_sign(void *key, char *data, int datalen,
 #ifdef _WINDOWS
 	}
 #endif /* _WINDOWS */
-#endif /* USE_CAPI */
+#endif /* USE_CAPI */	
 
     nbytes = (bignum_bitcount(out) + 7) / 8;
     bytes = snewn(4 + 7 + 4 + nbytes, unsigned char);

@@ -2388,7 +2388,7 @@ void do_sftp_cleanup()
     }
 }
 
-void do_sftp(int mode, int modeflags, char *batchfile)
+int do_sftp(int mode, int modeflags, char *batchfile)
 {
     FILE *fp;
     int ret;
@@ -2421,8 +2421,9 @@ void do_sftp(int mode, int modeflags, char *batchfile)
         fp = fopen(batchfile, "r");
         if (!fp) {
 	    printf("Fatal: unable to open %s\n", batchfile);
-	    return;
+	    return 1;
         }
+	ret = 0;
         while (1) {
 	    struct sftp_command *cmd;
 	    cmd = sftp_getcmd(fp, mode, modeflags);
@@ -2437,8 +2438,13 @@ void do_sftp(int mode, int modeflags, char *batchfile)
 	    }
         }
 	fclose(fp);
-
+	/*
+	 * In batch mode, and if exit on command failure is enabled,
+	 * any command failure causes the whole of PSFTP to fail.
+	 */
+	if (ret == 0 && !(modeflags & 2)) return 2;
     }
+    return 0;
 }
 
 /* ----------------------------------------------------------------------
@@ -2505,7 +2511,16 @@ void connection_fatal(void *frontend, char *fmt, ...)
     cleanup_exit(1);
 }
 
-void ldisc_echoedit_update(void *handle) { }
+void ldisc_send(void *handle, char *buf, int len, int interactive)
+{
+    /*
+     * This is only here because of the calls to ldisc_send(NULL,
+     * 0) in ssh.c. Nothing in PSFTP actually needs to use the
+     * ldisc as an ldisc. So if we get called with any real data, I
+     * want to know about it.
+     */
+    assert(len == 0);
+}
 
 /*
  * In psftp, all agent requests should be synchronous, so this is a
@@ -2885,7 +2900,7 @@ const int share_can_be_upstream = FALSE;
  */
 int psftp_main(int argc, char *argv[])
 {
-    int i;
+    int i, ret;
     int portnumber = 0;
     char *userhost, *user;
     int mode = 0;
@@ -2981,7 +2996,7 @@ int psftp_main(int argc, char *argv[])
 	       " to connect\n");
     }
 
-    do_sftp(mode, modeflags, batchfile);
+    ret = do_sftp(mode, modeflags, batchfile);
 
     if (back != NULL && back->connected(backhandle)) {
 	char ch;
@@ -2995,5 +3010,5 @@ int psftp_main(int argc, char *argv[])
     console_provide_logctx(NULL);
     sk_cleanup();
 
-    return 0;
+    return ret;
 }
