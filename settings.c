@@ -19,7 +19,6 @@ static const struct keyvalwhere ciphernames[] = {
 };
 
 static const struct keyvalwhere kexnames[] = {
-    { "ecdh",               KEX_ECDH,       -1, +1 },
     { "dh-gex-sha1",        KEX_DHGEX,      -1, -1 },
     { "dh-group14-sha1",    KEX_DHGROUP14,  -1, -1 },
     { "dh-group1-sha1",     KEX_DHGROUP1,   -1, -1 },
@@ -631,6 +630,7 @@ void save_open_settings(void *sesskey, Conf *conf)
     write_setting_i(sesskey, "BugPKSessID2", 2-conf_get_int(conf, CONF_sshbug_pksessid2));
     write_setting_i(sesskey, "BugRekey2", 2-conf_get_int(conf, CONF_sshbug_rekey2));
     write_setting_i(sesskey, "BugMaxPkt2", 2-conf_get_int(conf, CONF_sshbug_maxpkt2));
+    write_setting_i(sesskey, "BugOldGex2", 2-conf_get_int(conf, CONF_sshbug_oldgex2));
     write_setting_i(sesskey, "BugWinadj", 2-conf_get_int(conf, CONF_sshbug_winadj));
     write_setting_i(sesskey, "BugChanReq", 2-conf_get_int(conf, CONF_sshbug_chanreq));
     write_setting_i(sesskey, "StampUtmp", conf_get_int(conf, CONF_stamp_utmp));
@@ -771,11 +771,9 @@ void load_open_settings(void *sesskey, Conf *conf)
 	char *default_kexes;
 	i = 2 - gppi_raw(sesskey, "BugDHGEx2", 0);
 	if (i == FORCE_ON)
-            default_kexes = "ecdh,dh-group14-sha1,dh-group1-sha1,rsa,"
-                "WARN,dh-gex-sha1";
+	    default_kexes = "dh-group14-sha1,dh-group1-sha1,rsa,WARN,dh-gex-sha1";
 	else
-            default_kexes = "ecdh,dh-gex-sha1,dh-group14-sha1,"
-                "dh-group1-sha1,rsa,WARN";
+	    default_kexes = "dh-gex-sha1,dh-group14-sha1,dh-group1-sha1,rsa,WARN";
 	gprefs(sesskey, "KEX", default_kexes,
 	       kexnames, KEX_MAX, conf, CONF_ssh_kexlist);
     }
@@ -980,6 +978,7 @@ void load_open_settings(void *sesskey, Conf *conf)
     i = gppi_raw(sesskey, "BugPKSessID2", 0); conf_set_int(conf, CONF_sshbug_pksessid2, 2-i);
     i = gppi_raw(sesskey, "BugRekey2", 0); conf_set_int(conf, CONF_sshbug_rekey2, 2-i);
     i = gppi_raw(sesskey, "BugMaxPkt2", 0); conf_set_int(conf, CONF_sshbug_maxpkt2, 2-i);
+    i = gppi_raw(sesskey, "BugOldGex2", 0); conf_set_int(conf, CONF_sshbug_oldgex2, 2-i);
     i = gppi_raw(sesskey, "BugWinadj", 0); conf_set_int(conf, CONF_sshbug_winadj, 2-i);
     i = gppi_raw(sesskey, "BugChanReq", 0); conf_set_int(conf, CONF_sshbug_chanreq, 2-i);
     conf_set_int(conf, CONF_ssh_simple, FALSE);

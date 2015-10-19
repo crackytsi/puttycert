@@ -10,90 +10,7 @@
 
 #include "misc.h"
 
-/*
- * Usage notes:
- *  * Do not call the DIVMOD_WORD macro with expressions such as array
- *    subscripts, as some implementations object to this (see below).
- *  * Note that none of the division methods below will cope if the
- *    quotient won't fit into BIGNUM_INT_BITS. Callers should be careful
- *    to avoid this case.
- *    If this condition occurs, in the case of the x86 DIV instruction,
- *    an overflow exception will occur, which (according to a correspondent)
- *    will manifest on Windows as something like
- *      0xC0000095: Integer overflow
- *    The C variant won't give the right answer, either.
- */
-
-#if defined __GNUC__ && defined __i386__
-typedef unsigned long BignumInt;
-typedef unsigned long long BignumDblInt;
-#define BIGNUM_INT_MASK  0xFFFFFFFFUL
-#define BIGNUM_TOP_BIT   0x80000000UL
-#define BIGNUM_INT_BITS  32
-#define MUL_WORD(w1, w2) ((BignumDblInt)w1 * w2)
-#define DIVMOD_WORD(q, r, hi, lo, w) \
-    __asm__("div %2" : \
-	    "=d" (r), "=a" (q) : \
-	    "r" (w), "d" (hi), "a" (lo))
-#elif defined _MSC_VER && defined _M_IX86
-typedef unsigned __int32 BignumInt;
-typedef unsigned __int64 BignumDblInt;
-#define BIGNUM_INT_MASK  0xFFFFFFFFUL
-#define BIGNUM_TOP_BIT   0x80000000UL
-#define BIGNUM_INT_BITS  32
-#define MUL_WORD(w1, w2) ((BignumDblInt)w1 * w2)
-/* Note: MASM interprets array subscripts in the macro arguments as
- * assembler syntax, which gives the wrong answer. Don't supply them.
- * <http://msdn2.microsoft.com/en-us/library/bf1dw62z.aspx> */
-#define DIVMOD_WORD(q, r, hi, lo, w) do { \
-    __asm mov edx, hi \
-    __asm mov eax, lo \
-    __asm div w \
-    __asm mov r, edx \
-    __asm mov q, eax \
-} while(0)
-#elif defined _LP64
-/* 64-bit architectures can do 32x32->64 chunks at a time */
-typedef unsigned int BignumInt;
-typedef unsigned long BignumDblInt;
-#define BIGNUM_INT_MASK  0xFFFFFFFFU
-#define BIGNUM_TOP_BIT   0x80000000U
-#define BIGNUM_INT_BITS  32
-#define MUL_WORD(w1, w2) ((BignumDblInt)w1 * w2)
-#define DIVMOD_WORD(q, r, hi, lo, w) do { \
-    BignumDblInt n = (((BignumDblInt)hi) << BIGNUM_INT_BITS) | lo; \
-    q = n / w; \
-    r = n % w; \
-} while (0)
-#elif defined _LLP64
-/* 64-bit architectures in which unsigned long is 32 bits, not 64 */
-typedef unsigned long BignumInt;
-typedef unsigned long long BignumDblInt;
-#define BIGNUM_INT_MASK  0xFFFFFFFFUL
-#define BIGNUM_TOP_BIT   0x80000000UL
-#define BIGNUM_INT_BITS  32
-#define MUL_WORD(w1, w2) ((BignumDblInt)w1 * w2)
-#define DIVMOD_WORD(q, r, hi, lo, w) do { \
-    BignumDblInt n = (((BignumDblInt)hi) << BIGNUM_INT_BITS) | lo; \
-    q = n / w; \
-    r = n % w; \
-} while (0)
-#else
-/* Fallback for all other cases */
-typedef unsigned short BignumInt;
-typedef unsigned long BignumDblInt;
-#define BIGNUM_INT_MASK  0xFFFFU
-#define BIGNUM_TOP_BIT   0x8000U
-#define BIGNUM_INT_BITS  16
-#define MUL_WORD(w1, w2) ((BignumDblInt)w1 * w2)
-#define DIVMOD_WORD(q, r, hi, lo, w) do { \
-    BignumDblInt n = (((BignumDblInt)hi) << BIGNUM_INT_BITS) | lo; \
-    q = n / w; \
-    r = n % w; \
-} while (0)
-#endif
-
-#define BIGNUM_INT_BYTES (BIGNUM_INT_BITS / 8)
+#include "sshbn.h"
 
 #define BIGNUM_INTERNAL
 typedef BignumInt *Bignum;
@@ -598,7 +515,7 @@ static void monty_reduce(BignumInt *x, const BignumInt *n,
 }
 
 static void internal_add_shifted(BignumInt *number,
-				 unsigned n, int shift)
+				 BignumInt n, int shift)
 {
     int word = 1 + (shift / BIGNUM_INT_BITS);
     int bshift = shift % BIGNUM_INT_BITS;
@@ -629,8 +546,7 @@ static void internal_mod(BignumInt *a, int alen,
 			 BignumInt *m, int mlen,
 			 BignumInt *quot, int qshift)
 {
-    BignumInt m0, m1;
-    unsigned int h;
+    BignumInt m0, m1, h;
     int i, k;
 
     m0 = m[0];
@@ -642,7 +558,7 @@ static void internal_mod(BignumInt *a, int alen,
 
     for (i = 0; i <= alen - mlen; i++) {
 	BignumDblInt t;
-	unsigned int q, r, c, ai1;
+        BignumInt q, r, c, ai1;
 
 	if (i == 0) {
 	    h = 0;
@@ -697,7 +613,7 @@ static void internal_mod(BignumInt *a, int alen,
 	for (k = mlen - 1; k >= 0; k--) {
 	    t = MUL_WORD(q, m[k]);
 	    t += c;
-	    c = (unsigned)(t >> BIGNUM_INT_BITS);
+	    c = (BignumInt)(t >> BIGNUM_INT_BITS);
 	    if ((BignumInt) t > a[i + k])
 		c++;
 	    a[i + k] -= (BignumInt) t;
@@ -780,7 +696,7 @@ Bignum modpow_simple(Bignum base_in, Bignum exp, Bignum mod)
     /* Skip leading zero bits of exp. */
     i = 0;
     j = BIGNUM_INT_BITS-1;
-    while (i < (int)exp[0] && (exp[exp[0] - i] & (1 << j)) == 0) {
+    while (i < (int)exp[0] && (exp[exp[0] - i] & ((BignumInt)1 << j)) == 0) {
 	j--;
 	if (j < 0) {
 	    i++;
@@ -793,7 +709,7 @@ Bignum modpow_simple(Bignum base_in, Bignum exp, Bignum mod)
 	while (j >= 0) {
 	    internal_mul(a + mlen, a + mlen, b, mlen, scratch);
 	    internal_mod(b, mlen * 2, m, mlen, NULL, 0);
-	    if ((exp[exp[0] - i] & (1 << j)) != 0) {
+	    if ((exp[exp[0] - i] & ((BignumInt)1 << j)) != 0) {
 		internal_mul(b + mlen, n, a, mlen, scratch);
 		internal_mod(a, mlen * 2, m, mlen, NULL, 0);
 	    } else {
@@ -930,7 +846,7 @@ Bignum modpow(Bignum base_in, Bignum exp, Bignum mod)
     /* Skip leading zero bits of exp. */
     i = 0;
     j = BIGNUM_INT_BITS-1;
-    while (i < (int)exp[0] && (exp[exp[0] - i] & (1 << j)) == 0) {
+    while (i < (int)exp[0] && (exp[exp[0] - i] & ((BignumInt)1 << j)) == 0) {
 	j--;
 	if (j < 0) {
 	    i++;
@@ -943,7 +859,7 @@ Bignum modpow(Bignum base_in, Bignum exp, Bignum mod)
 	while (j >= 0) {
 	    internal_mul(a + len, a + len, b, len, scratch);
             monty_reduce(b, n, mninv, scratch, len);
-	    if ((exp[exp[0] - i] & (1 << j)) != 0) {
+	    if ((exp[exp[0] - i] & ((BignumInt)1 << j)) != 0) {
                 internal_mul(b + len, x, a, len,  scratch);
                 monty_reduce(a, n, mninv, scratch, len);
 	    } else {
@@ -1092,38 +1008,6 @@ Bignum modmul(Bignum p, Bignum q, Bignum mod)
     return result;
 }
 
-Bignum modsub(const Bignum a, const Bignum b, const Bignum n)
-{
-    Bignum a1, b1, ret;
-
-    if (bignum_cmp(a, n) >= 0) a1 = bigmod(a, n);
-    else a1 = a;
-    if (bignum_cmp(b, n) >= 0) b1 = bigmod(b, n);
-    else b1 = b;
-
-    if (bignum_cmp(a1, b1) >= 0) /* a >= b */
-    {
-        ret = bigsub(a1, b1);
-    }
-    else
-    {
-        /* Handle going round the corner of the modulus without having
-         * negative support in Bignum */
-        Bignum tmp = bigsub(n, b1);
-        if (tmp) {
-            ret = bigadd(tmp, a1);
-            freebn(tmp);
-        } else {
-            ret = NULL;
-        }
-    }
-
-    if (a != a1) freebn(a1);
-    if (b != b1) freebn(b1);
-
-    return ret;
-}
-
 /*
  * Compute p % mod.
  * The most significant word of mod MUST be non-zero.
@@ -1225,45 +1109,13 @@ Bignum bignum_from_bytes(const unsigned char *data, int nbytes)
 	result[i] = 0;
     for (i = nbytes; i--;) {
 	unsigned char byte = *data++;
-	result[1 + i / BIGNUM_INT_BYTES] |= byte << (8*i % BIGNUM_INT_BITS);
+	result[1 + i / BIGNUM_INT_BYTES] |=
+            (BignumInt)byte << (8*i % BIGNUM_INT_BITS);
     }
 
     while (result[0] > 1 && result[result[0]] == 0)
 	result[0]--;
     return result;
-}
-
-Bignum bignum_random_in_range(const Bignum lower, const Bignum upper)
-{
-    Bignum ret = NULL;
-    unsigned char *bytes;
-    int upper_len = bignum_bitcount(upper);
-    int upper_bytes = upper_len / 8;
-    int upper_bits = upper_len % 8;
-    if (upper_bits) ++upper_bytes;
-
-    bytes = snewn(upper_bytes, unsigned char);
-    do {
-        int i;
-
-        if (ret) freebn(ret);
-
-        for (i = 0; i < upper_bytes; ++i)
-        {
-            bytes[i] = (unsigned char)random_byte();
-        }
-        /* Mask the top to reduce failure rate to 50/50 */
-        if (upper_bits)
-        {
-            bytes[i - 1] &= 0xFF >> (8 - upper_bits);
-        }
-
-        ret = bignum_from_bytes(bytes, upper_bytes);
-    } while (bignum_cmp(ret, lower) < 0 || bignum_cmp(ret, upper) > 0);
-    smemclr(bytes, upper_bytes);
-    sfree(bytes);
-
-    return ret;
 }
 
 /*
@@ -1354,7 +1206,7 @@ void bignum_set_bit(Bignum bn, int bitnum, int value)
 	abort();		       /* beyond the end */
     else {
 	int v = bitnum / BIGNUM_INT_BITS + 1;
-	int mask = 1 << (bitnum % BIGNUM_INT_BITS);
+	BignumInt mask = (BignumInt)1 << (bitnum % BIGNUM_INT_BITS);
 	if (value)
 	    bn[v] |= mask;
 	else
@@ -1435,45 +1287,6 @@ Bignum bignum_rshift(Bignum a, int shift)
 	    ai1 = (i + shiftw + 1 <= (int)a[0] ? a[i + shiftw + 1] : 0);
 	    ret[i] = ((ai >> shiftb) | (ai1 << shiftbb)) & BIGNUM_INT_MASK;
 	}
-    }
-
-    return ret;
-}
-
-/*
- * Left-shift one bignum to form another.
- */
-Bignum bignum_lshift(Bignum a, int shift)
-{
-    Bignum ret;
-    int bits, shiftWords, shiftBits;
-
-    assert(shift >= 0);
-
-    bits = bignum_bitcount(a) + shift;
-    ret = newbn((bits + BIGNUM_INT_BITS - 1) / BIGNUM_INT_BITS);
-    if (!ret) return NULL;
-
-    shiftWords = shift / BIGNUM_INT_BITS;
-    shiftBits = shift % BIGNUM_INT_BITS;
-
-    if (shiftBits == 0)
-    {
-        memcpy(&ret[1 + shiftWords], &a[1], sizeof(BignumInt) * a[0]);
-    }
-    else
-    {
-        int i;
-        BignumInt carry = 0;
-
-        /* Remember that Bignum[0] is length, so add 1 */
-        for (i = shiftWords + 1; i < ((int)a[0]) + shiftWords + 1; ++i)
-        {
-            BignumInt from = a[i - shiftWords];
-            ret[i] = (from << shiftBits) | carry;
-            carry = from >> (BIGNUM_INT_BITS - shiftBits);
-        }
-        if (carry) ret[i] = carry;
     }
 
     return ret;
@@ -1931,6 +1744,12 @@ void modalfatalbox(char *p, ...)
     va_end(ap);
     fputc('\n', stderr);
     exit(1);
+}
+
+int random_byte(void)
+{
+    modalfatalbox("random_byte called in testbn");
+    return 0;
 }
 
 #define fromxdigit(c) ( (c)>'9' ? ((c)&0xDF) - 'A' + 10 : (c) - '0' )

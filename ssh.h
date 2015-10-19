@@ -44,7 +44,8 @@ void ssh_sharing_remove_x11_display(Ssh ssh, struct X11FakeAuth *auth);
 void ssh_send_packet_from_downstream(Ssh ssh, unsigned id, int type,
                                      const void *pkt, int pktlen,
                                      const char *additional_log_text);
-void ssh_sharing_downstream_connected(Ssh ssh, unsigned id);
+void ssh_sharing_downstream_connected(Ssh ssh, unsigned id,
+                                      const char *peerinfo);
 void ssh_sharing_downstream_disconnected(Ssh ssh, unsigned id);
 void ssh_sharing_logf(Ssh ssh, unsigned id, const char *logfmt, ...);
 int ssh_agent_forwarding_permitted(Ssh ssh);
@@ -99,38 +100,6 @@ struct dss_key {
     Bignum p, q, g, y, x;
 };
 
-struct ec_curve;
-
-struct ec_point {
-    const struct ec_curve *curve;
-    Bignum x, y;
-    Bignum z;  /* Jacobian denominator */
-    unsigned char infinity;
-};
-
-void ec_point_free(struct ec_point *point);
-
-struct ec_curve {
-    unsigned int fieldBits;
-    Bignum p, a, b, n;
-    struct ec_point G;
-};
-
-extern unsigned char nistp256_oid[];
-extern unsigned char nistp384_oid[];
-extern unsigned char nistp521_oid[];
-extern int nistp256_oid_len;
-extern int nistp384_oid_len;
-extern int nistp521_oid_len;
-struct ec_curve *ec_p256(void);
-struct ec_curve *ec_p384(void);
-struct ec_curve *ec_p521(void);
-
-struct ec_key {
-    struct ec_point publicKey;
-    Bignum privateKey;
-};
-
 int makekey(unsigned char *data, int len, struct RSAKey *result,
 	    unsigned char **keystr, int order);
 int makeprivate(unsigned char *data, int len, struct RSAKey *result);
@@ -172,20 +141,6 @@ int ssh_rsakex_klen(void *key);
 void ssh_rsakex_encrypt(const struct ssh_hash *h, unsigned char *in, int inlen,
                         unsigned char *out, int outlen,
                         void *key);
-
-/*
- * SSH2 ECDH key exchange functions
- */
-void *ssh_ecdhkex_newkey(struct ec_curve *curve);
-void ssh_ecdhkex_freekey(void *key);
-char *ssh_ecdhkex_getpublic(void *key, int *len);
-Bignum ssh_ecdhkex_getkey(void *key, char *remoteKey, int remoteKeyLen);
-
-/*
- * Helper function for k generation in DSA, reused in ECDSA
- */
-Bignum *dss_gen_k(const char *id_string, Bignum modulus, Bignum private_key,
-                  unsigned char *digest, int digest_len);
 
 typedef struct {
     uint32 h[4];
@@ -244,15 +199,10 @@ typedef struct {
     int blkused;
     uint32 len[4];
 } SHA512_State;
-#define SHA384_State SHA512_State
 void SHA512_Init(SHA512_State * s);
 void SHA512_Bytes(SHA512_State * s, const void *p, int len);
 void SHA512_Final(SHA512_State * s, unsigned char *output);
 void SHA512_Simple(const void *p, int len, unsigned char *output);
-void SHA384_Init(SHA384_State * s);
-#define SHA384_Bytes(s, p, len) SHA512_Bytes(s, p, len)
-void SHA384_Final(SHA384_State * s, unsigned char *output);
-void SHA384_Simple(const void *p, int len, unsigned char *output);
 
 struct ssh_cipher {
     void *(*make_context)(void);
@@ -311,7 +261,7 @@ struct ssh_hash {
 
 struct ssh_kex {
     char *name, *groupname;
-    enum { KEXTYPE_DH, KEXTYPE_RSA, KEXTYPE_ECDH } main_type;
+    enum { KEXTYPE_DH, KEXTYPE_RSA } main_type;
     /* For DH */
     const unsigned char *pdata, *gdata; /* NULL means group exchange */
     int plen, glen;
@@ -367,7 +317,7 @@ struct ssh2_userkey {
 };
 
 /* The maximum length of any hash algorithm used in kex. (bytes) */
-#define SSH2_KEX_MAX_HASH_LEN (64) /* SHA-512 */
+#define SSH2_KEX_MAX_HASH_LEN (32) /* SHA-256 */
 
 extern const struct ssh_cipher ssh_3des;
 extern const struct ssh_cipher ssh_des;
@@ -379,18 +329,12 @@ extern const struct ssh2_ciphers ssh2_blowfish;
 extern const struct ssh2_ciphers ssh2_arcfour;
 extern const struct ssh_hash ssh_sha1;
 extern const struct ssh_hash ssh_sha256;
-extern const struct ssh_hash ssh_sha384;
-extern const struct ssh_hash ssh_sha512;
 extern const struct ssh_kexes ssh_diffiehellman_group1;
 extern const struct ssh_kexes ssh_diffiehellman_group14;
 extern const struct ssh_kexes ssh_diffiehellman_gex;
 extern const struct ssh_kexes ssh_rsa_kex;
-extern const struct ssh_kexes ssh_ecdh_kex;
 extern const struct ssh_signkey ssh_dss;
 extern const struct ssh_signkey ssh_rsa;
-extern const struct ssh_signkey ssh_ecdsa_nistp256;
-extern const struct ssh_signkey ssh_ecdsa_nistp384;
-extern const struct ssh_signkey ssh_ecdsa_nistp521;
 extern const struct ssh_mac ssh_hmac_md5;
 extern const struct ssh_mac ssh_hmac_sha1;
 extern const struct ssh_mac ssh_hmac_sha1_buggy;
@@ -559,11 +503,9 @@ Bignum bignum_from_long(unsigned long n);
 void freebn(Bignum b);
 Bignum modpow(Bignum base, Bignum exp, Bignum mod);
 Bignum modmul(Bignum a, Bignum b, Bignum mod);
-Bignum modsub(const Bignum a, const Bignum b, const Bignum n);
 void decbn(Bignum n);
 extern Bignum Zero, One;
 Bignum bignum_from_bytes(const unsigned char *data, int nbytes);
-Bignum bignum_random_in_range(const Bignum lower, const Bignum upper);
 int ssh1_read_bignum(const unsigned char *data, int len, Bignum * result);
 int bignum_bitcount(Bignum bn);
 int ssh1_bignum_length(Bignum bn);
@@ -584,7 +526,6 @@ Bignum bigmod(Bignum a, Bignum b);
 Bignum modinv(Bignum number, Bignum modulus);
 Bignum bignum_bitmask(Bignum number);
 Bignum bignum_rshift(Bignum number, int shift);
-Bignum bignum_lshift(Bignum number, int shift);
 int bignum_cmp(Bignum a, Bignum b);
 char *bignum_decimal(Bignum x);
 
@@ -678,8 +619,6 @@ int rsa_generate(struct RSAKey *key, int bits, progfn_t pfn,
 		 void *pfnparam);
 int dsa_generate(struct dss_key *key, int bits, progfn_t pfn,
 		 void *pfnparam);
-int ec_generate(struct ec_key *key, int bits, progfn_t pfn,
-                void *pfnparam);
 Bignum primegen(int bits, int modulus, int residue, Bignum factor,
 		int phase, progfn_t pfn, void *pfnparam, unsigned firstbits);
 void invent_firstbits(unsigned *one, unsigned *two);
@@ -782,17 +721,14 @@ void platform_ssh_share_cleanup(const char *name);
 #define SSH2_MSG_NEWKEYS                          21	/* 0x15 */
 #define SSH2_MSG_KEXDH_INIT                       30	/* 0x1e */
 #define SSH2_MSG_KEXDH_REPLY                      31	/* 0x1f */
-#define SSH2_MSG_KEX_DH_GEX_REQUEST               30	/* 0x1e */
+#define SSH2_MSG_KEX_DH_GEX_REQUEST_OLD           30	/* 0x1e */
+#define SSH2_MSG_KEX_DH_GEX_REQUEST               34	/* 0x22 */
 #define SSH2_MSG_KEX_DH_GEX_GROUP                 31	/* 0x1f */
 #define SSH2_MSG_KEX_DH_GEX_INIT                  32	/* 0x20 */
 #define SSH2_MSG_KEX_DH_GEX_REPLY                 33	/* 0x21 */
 #define SSH2_MSG_KEXRSA_PUBKEY                    30    /* 0x1e */
 #define SSH2_MSG_KEXRSA_SECRET                    31    /* 0x1f */
 #define SSH2_MSG_KEXRSA_DONE                      32    /* 0x20 */
-#define SSH2_MSG_KEX_ECDH_INIT                    30    /* 0x1e */
-#define SSH2_MSG_KEX_ECDH_REPLY                   31    /* 0x1f */
-#define SSH2_MSG_KEX_ECMQV_INIT                   30    /* 0x1e */
-#define SSH2_MSG_KEX_ECMQV_REPLY                  31    /* 0x1f */
 #define SSH2_MSG_USERAUTH_REQUEST                 50	/* 0x32 */
 #define SSH2_MSG_USERAUTH_FAILURE                 51	/* 0x33 */
 #define SSH2_MSG_USERAUTH_SUCCESS                 52	/* 0x34 */

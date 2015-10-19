@@ -253,7 +253,6 @@ enum {
     KEX_DHGROUP14,
     KEX_DHGEX,
     KEX_RSA,
-    KEX_ECDH,
     KEX_MAX
 };
 
@@ -602,7 +601,7 @@ void begin_session(void *frontend);
 void sys_cursor(void *frontend, int x, int y);
 void request_paste(void *frontend);
 void frontend_keypress(void *frontend);
-void frontend_echoedit_update(void *frontend, int echo, int edit);
+void ldisc_update(void *frontend, int echo, int edit);
 /* It's the backend's responsibility to invoke this at the start of a
  * connection, if necessary; it can also invoke it later if the set of
  * special commands changes. It does not need to invoke it at session
@@ -838,6 +837,7 @@ void cleanup_exit(int);
     X(INT, NONE, sshbug_rekey2) \
     X(INT, NONE, sshbug_maxpkt2) \
     X(INT, NONE, sshbug_ignore2) \
+    X(INT, NONE, sshbug_oldgex2) \
     X(INT, NONE, sshbug_winadj) \
     X(INT, NONE, sshbug_chanreq) \
     /*                                                                \
@@ -1067,7 +1067,6 @@ void *ldisc_create(Conf *, Terminal *, Backend *, void *, void *);
 void ldisc_configure(void *, Conf *);
 void ldisc_free(void *);
 void ldisc_send(void *handle, char *buf, int len, int interactive);
-void ldisc_echoedit_update(void *handle);
 
 /*
  * Exports from ldiscucs.c.

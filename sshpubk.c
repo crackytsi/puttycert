@@ -563,12 +563,6 @@ const struct ssh_signkey *find_pubkey_alg(const char *name)
 	return &ssh_rsa;
     else if (!strcmp(name, "ssh-dss"))
 	return &ssh_dss;
-    else if (!strcmp(name, "ecdsa-sha2-nistp256"))
-        return &ssh_ecdsa_nistp256;
-    else if (!strcmp(name, "ecdsa-sha2-nistp384"))
-        return &ssh_ecdsa_nistp384;
-    else if (!strcmp(name, "ecdsa-sha2-nistp521"))
-        return &ssh_ecdsa_nistp521;
     else
 	return NULL;
 }
@@ -586,8 +580,7 @@ struct ssh2_userkey *ssh2_load_userkey(const Filename *filename,
     int i, is_mac, old_fmt;
     int passlen = passphrase ? strlen(passphrase) : 0;
     const char *error = NULL;
-	
-  
+
 #ifdef USE_CAPI
 	if(0 == strncmp("cert://", filename->path, 7)) {
 		alg = find_pubkey_alg("ssh-rsa");
@@ -605,8 +598,7 @@ struct ssh2_userkey *ssh2_load_userkey(const Filename *filename,
 			(((struct RSAKey*)ret->data)->comment) : "");
 		return ret;
 	}
-#endif /* USE_CAPI */
-
+#endif /* USE_CAPI */	
 	
     ret = NULL;			       /* return NULL for most errors */
     encryption = comment = mac = NULL;
@@ -864,7 +856,7 @@ unsigned char *ssh2_userkey_loadpub(const Filename *filename, char **algorithm,
     int public_blob_len;
     int i;
     const char *error = NULL;
-    char *comment;
+    char *comment = NULL;
 	
 #ifdef USE_CAPI
 	struct RSAKey *key;
@@ -884,7 +876,7 @@ unsigned char *ssh2_userkey_loadpub(const Filename *filename, char **algorithm,
  		return public_blob;
  	}
 #endif /* USE_CAPI */
-
+	
 
     public_blob = NULL;
 
@@ -909,11 +901,10 @@ unsigned char *ssh2_userkey_loadpub(const Filename *filename, char **algorithm,
 	goto error;
     /* Select key algorithm structure. */
     alg = find_pubkey_alg(b);
+    sfree(b);
     if (!alg) {
-	sfree(b);
 	goto error;
     }
-    sfree(b);
 
     /* Read the Encryption header line. */
     if (!read_header(fp, header) || 0 != strcmp(header, "Encryption"))
@@ -960,6 +951,10 @@ unsigned char *ssh2_userkey_loadpub(const Filename *filename, char **algorithm,
 	sfree(public_blob);
     if (errorstr)
 	*errorstr = error;
+    if (comment && commentptr) {
+        sfree(comment);
+        *commentptr = NULL;
+    }
     return NULL;
 }
 
@@ -1202,8 +1197,7 @@ int key_type(const Filename *filename)
 	if(0 == strncmp("cert://", filename->path, 7)) {
 		return SSH_KEYTYPE_SSH2;
 	}
-#endif /* USE_CAPI */
-
+#endif /* USE_CAPI */	
 
     fp = f_open(filename, "r", FALSE);
     if (!fp)
