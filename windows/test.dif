@@ -1,0 +1,469 @@
+5,95c5,95
+< #
+< # Extra options you can set:
+< #
+< #  - COMPAT=-DAUTO_WINSOCK (Windows only)
+< #      Causes PuTTY to assume that <windows.h> includes its own WinSock
+< #      header file, so that it won't try to include <winsock.h>.
+< #
+< #  - COMPAT=-DWINSOCK_TWO (Windows only)
+< #      Causes the PuTTY utilities to include <winsock2.h> instead of
+< #      <winsock.h>, except Plink which _needs_ WinSock 2 so it already
+< #      does this.
+< #
+< #  - COMPAT=-DNO_SECURITY (Windows only)
+< #      Disables Pageant's use of <aclapi.h>, which is not available
+< #      with some development environments (such as older versions of
+< #      the Cygwin/mingw GNU toolchain). This means that Pageant
+< #      won't care about the local user ID of processes accessing it; a
+< #      version of Pageant built with this option will therefore refuse
+< #      to run under NT-series OSes on security grounds (although it
+< #      will run fine on Win95-series OSes where there is no access
+< #      control anyway).
+< #
+< #  - COMPAT=-DNO_MULTIMON (Windows only)
+< #      Disables PuTTY's use of <multimon.h>, which is not available
+< #      with some development environments. This means that PuTTY's
+< #      full-screen mode (configurable to work on Alt-Enter) will
+< #      not behave usefully in a multi-monitor environment.
+< #
+< #      Note that this definition is always enabled in the Cygwin
+< #      build, since at the time of writing this <multimon.h> is
+< #      known not to be available in Cygwin.
+< #
+< #  - COMPAT=-DNO_HTMLHELP (Windows only)
+< #      Disables PuTTY's use of <htmlhelp.h>, which is not available
+< #      with some development environments. The resulting binary
+< #      will only look for an old-style WinHelp file (.HLP/.CNT), and
+< #      will ignore any .CHM file.
+< #
+< #      Note that this definition is always enabled in the Cygwin
+< #      build, since at the time of writing this <htmlhelp.h> is
+< #      known not to be available in Cygwin (although you can use
+< #      the htmlhelp.h supplied with HTML Help Workshop).
+< #
+< #  - RCFL=-DNO_MANIFESTS (Windows only)
+< #      Disables inclusion of XML application manifests in the PuTTY
+< #      binaries. This may be necessary to build for 64-bit Windows;
+< #      the manifests are only included to use the XP GUI style on
+< #      Windows XP, and the architecture tags are a lie on 64-bit.
+< #
+< #  - COMPAT=-DNO_IPV6
+< #      Disables PuTTY's ability to make IPv6 connections, enabling
+< #      it to compile under development environments which do not
+< #      support IPv6 in their header files.
+< #
+< #  - COMPAT=-DNO_GSSAPI
+< #      Disables PuTTY's ability to use GSSAPI functions for
+< #      authentication and key exchange.
+< #
+< #  - COMPAT=-DSTATIC_GSSAPI
+< #      Causes PuTTY to try to link statically against the GSSAPI
+< #      library instead of the default of doing it at run time.
+< #
+< #  - COMPAT=-DMSVC4 (Windows only)
+< #  - RCFL=-DMSVC4
+< #      Makes a couple of minor changes so that PuTTY compiles using
+< #      MSVC 4. You will also need -DNO_SECURITY and -DNO_MULTIMON.
+< #
+< #  - COMPAT=-DNO_SECUREZEROMEMORY (Windows only)
+< #      Disables PuTTY's use of SecureZeroMemory(), which is missing
+< #      from some environments' header files.  This is enabled by
+< #      default in the Cygwin Makefile.
+< #
+< #  - XFLAGS=-DTELNET_DEFAULT
+< #      Causes PuTTY to default to the Telnet protocol (in the absence
+< #      of Default Settings and so on to the contrary). Normally PuTTY
+< #      will default to SSH.
+< #
+< #  - XFLAGS=-DDEBUG
+< #      Causes PuTTY to enable internal debugging.
+< #
+< #  - XFLAGS=-DMALLOC_LOG
+< #      Causes PuTTY to emit a file called putty_mem.log, logging every
+< #      memory allocation and free, so you can track memory leaks.
+< #
+< #  - XFLAGS=-DMINEFIELD (Windows only)
+< #      Causes PuTTY to use a custom memory allocator, similar in
+< #      concept to Electric Fence, in place of regular malloc(). Wastes
+< #      huge amounts of RAM, but should cause heap-corruption bugs to
+< #      show up as GPFs at the point of failure rather than appearing
+< #      later on as second-level damage.
+< #
+---
+> #
+> # Extra options you can set:
+> #
+> #  - COMPAT=-DAUTO_WINSOCK (Windows only)
+> #      Causes PuTTY to assume that <windows.h> includes its own WinSock
+> #      header file, so that it won't try to include <winsock.h>.
+> #
+> #  - COMPAT=-DWINSOCK_TWO (Windows only)
+> #      Causes the PuTTY utilities to include <winsock2.h> instead of
+> #      <winsock.h>, except Plink which _needs_ WinSock 2 so it already
+> #      does this.
+> #
+> #  - COMPAT=-DNO_SECURITY (Windows only)
+> #      Disables Pageant's use of <aclapi.h>, which is not available
+> #      with some development environments (such as older versions of
+> #      the Cygwin/mingw GNU toolchain). This means that Pageant
+> #      won't care about the local user ID of processes accessing it; a
+> #      version of Pageant built with this option will therefore refuse
+> #      to run under NT-series OSes on security grounds (although it
+> #      will run fine on Win95-series OSes where there is no access
+> #      control anyway).
+> #
+> #  - COMPAT=-DNO_MULTIMON (Windows only)
+> #      Disables PuTTY's use of <multimon.h>, which is not available
+> #      with some development environments. This means that PuTTY's
+> #      full-screen mode (configurable to work on Alt-Enter) will
+> #      not behave usefully in a multi-monitor environment.
+> #
+> #      Note that this definition is always enabled in the Cygwin
+> #      build, since at the time of writing this <multimon.h> is
+> #      known not to be available in Cygwin.
+> #
+> #  - COMPAT=-DNO_HTMLHELP (Windows only)
+> #      Disables PuTTY's use of <htmlhelp.h>, which is not available
+> #      with some development environments. The resulting binary
+> #      will only look for an old-style WinHelp file (.HLP/.CNT), and
+> #      will ignore any .CHM file.
+> #
+> #      Note that this definition is always enabled in the Cygwin
+> #      build, since at the time of writing this <htmlhelp.h> is
+> #      known not to be available in Cygwin (although you can use
+> #      the htmlhelp.h supplied with HTML Help Workshop).
+> #
+> #  - RCFL=-DNO_MANIFESTS (Windows only)
+> #      Disables inclusion of XML application manifests in the PuTTY
+> #      binaries. This may be necessary to build for 64-bit Windows;
+> #      the manifests are only included to use the XP GUI style on
+> #      Windows XP, and the architecture tags are a lie on 64-bit.
+> #
+> #  - COMPAT=-DNO_IPV6
+> #      Disables PuTTY's ability to make IPv6 connections, enabling
+> #      it to compile under development environments which do not
+> #      support IPv6 in their header files.
+> #
+> #  - COMPAT=-DNO_GSSAPI
+> #      Disables PuTTY's ability to use GSSAPI functions for
+> #      authentication and key exchange.
+> #
+> #  - COMPAT=-DSTATIC_GSSAPI
+> #      Causes PuTTY to try to link statically against the GSSAPI
+> #      library instead of the default of doing it at run time.
+> #
+> #  - COMPAT=-DMSVC4 (Windows only)
+> #  - RCFL=-DMSVC4
+> #      Makes a couple of minor changes so that PuTTY compiles using
+> #      MSVC 4. You will also need -DNO_SECURITY and -DNO_MULTIMON.
+> #
+> #  - COMPAT=-DNO_SECUREZEROMEMORY (Windows only)
+> #      Disables PuTTY's use of SecureZeroMemory(), which is missing
+> #      from some environments' header files.  This is enabled by
+> #      default in the Cygwin Makefile.
+> #
+> #  - XFLAGS=-DTELNET_DEFAULT
+> #      Causes PuTTY to default to the Telnet protocol (in the absence
+> #      of Default Settings and so on to the contrary). Normally PuTTY
+> #      will default to SSH.
+> #
+> #  - XFLAGS=-DDEBUG
+> #      Causes PuTTY to enable internal debugging.
+> #
+> #  - XFLAGS=-DMALLOC_LOG
+> #      Causes PuTTY to emit a file called putty_mem.log, logging every
+> #      memory allocation and free, so you can track memory leaks.
+> #
+> #  - XFLAGS=-DMINEFIELD (Windows only)
+> #      Causes PuTTY to use a custom memory allocator, similar in
+> #      concept to Electric Fence, in place of regular malloc(). Wastes
+> #      huge amounts of RAM, but should cause heap-corruption bugs to
+> #      show up as GPFs at the point of failure rather than appearing
+> #      later on as second-level damage.
+> #
+108,111c108,110
+< CFLAGS = -Wall -O2 -D_WINDOWS -DDEBUG -DWIN32S_COMPAT \
+< 		-D_NO_OLDNAMES -DNO_MULTIMON -DNO_HTMLHELP -DUSE_CAPI\
+< 		-DNO_SECUREZEROMEMORY -I.././ -I../charset/ -I../windows/ \
+< 		-I../unix/ -I../macosx/
+---
+> CFLAGS = -Wall -O2 -D_WINDOWS -DDEBUG -DWIN32S_COMPAT -D_NO_OLDNAMES \
+> 		-DNO_MULTIMON -DNO_HTMLHELP -DNO_SECUREZEROMEMORY -I.././ \
+> 		-I../charset/ -I../windows/ -I../unix/ -I../macosx/
+116,120c115,119
+< # _WIN32_IE is required to expose identifiers that only make sense on
+< # systems with IE5+ installed, such as some arguments to SHGetFolderPath().
+< # WINVER etc perform a similar function for FlashWindowEx().
+< CFLAGS += -D_WIN32_IE=0x0500 -DUSE_CAPI
+< CFLAGS += -DWINVER=0x0500 -D_WIN32_WINDOWS=0x0410 -D_WIN32_WINNT=0x0500
+---
+> # _WIN32_IE is required to expose identifiers that only make sense on
+> # systems with IE5+ installed, such as some arguments to SHGetFolderPath().
+> # WINVER etc perform a similar function for FlashWindowEx().
+> CFLAGS += -D_WIN32_IE=0x0500 -DUSE_CAPI
+> CFLAGS += -DWINVER=0x0500 -D_WIN32_WINDOWS=0x0410 -D_WIN32_WINNT=0x0500
+128,130c127,129
+< 		sshmd5.o sshpubk.o sshrsa.o sshsh256.o sshsh512.o sshsha.o \
+< 		tree234.o version.o winhelp.o winmisc.o winpgnt.o winpgntc.o \
+< 		winsecur.o winutils.o
+---
+> 		sshecc.o sshmd5.o sshpubk.o sshrsa.o sshsh256.o sshsh512.o \
+> 		sshsha.o tree234.o version.o wincapi.o winhelp.o winmisc.o \
+> 		winpgnt.o winpgntc.o winsecur.o winutils.o
+132,137c131,136
+< 		pageant.res.o sshaes.o sshbn.o sshdes.o sshdss.o sshmd5.o \
+< 		sshpubk.o sshrsa.o sshsh256.o sshsh512.o sshsha.o tree234.o \
+< 		version.o winhelp.o winmisc.o winpgnt.o winpgntc.o \
+< 		winsecur.o winutils.o -ladvapi32 -lcomctl32 -lcomdlg32 \
+< 		-lgdi32 -limm32 -lole32 -lshell32 -luser32 -lwinmm -lcrypt32 \
+< 		-lwinspool
+---
+> 		pageant.res.o sshaes.o sshbn.o sshdes.o sshdss.o sshecc.o \
+> 		sshmd5.o sshpubk.o sshrsa.o sshsh256.o sshsh512.o sshsha.o \
+> 		tree234.o version.o wincapi.o winhelp.o winmisc.o winpgnt.o \
+> 		winpgntc.o winsecur.o winutils.o -ladvapi32 -lcomctl32 \
+> 		-lcomdlg32 -lcrypt32 -lgdi32 -limm32 -lole32 -lshell32 \
+> 		-luser32 -lwinmm -lwinspool
+143,149c142,148
+< 		sshdh.o sshdss.o sshgssc.o sshmd5.o sshpubk.o sshrand.o \
+< 		sshrsa.o sshsh256.o sshsh512.o sshsha.o sshshare.o sshzlib.o \
+< 		telnet.o timing.o tree234.o version.o wildcard.o wincons.o \
+< 		windefs.o wingss.o winhandl.o winhsock.o winmisc.o winnet.o \
+< 		winnoise.o winnojmp.o winnpc.o winnps.o winpgntc.o \
+< 		winplink.o winproxy.o winsecur.o winser.o winshare.o \
+< 		winstore.o wintime.o winx11.o x11fwd.o
+---
+> 		sshdh.o sshdss.o sshecc.o sshgssc.o sshmd5.o sshpubk.o \
+> 		sshrand.o sshrsa.o sshsh256.o sshsh512.o sshsha.o sshshare.o \
+> 		sshzlib.o telnet.o timing.o tree234.o version.o wildcard.o \
+> 		wincapi.o wincons.o windefs.o wingss.o winhandl.o winhsock.o \
+> 		winmisc.o winnet.o winnoise.o winnojmp.o winnpc.o winnps.o \
+> 		winpgntc.o winplink.o winproxy.o winsecur.o winser.o \
+> 		winshare.o winstore.o wintime.o winx11.o x11fwd.o
+155,163c154,162
+< 		sshdss.o sshgssc.o sshmd5.o sshpubk.o sshrand.o sshrsa.o \
+< 		sshsh256.o sshsh512.o sshsha.o sshshare.o sshzlib.o telnet.o \
+< 		timing.o tree234.o version.o wildcard.o wincons.o windefs.o \
+< 		wingss.o winhandl.o winhsock.o winmisc.o winnet.o winnoise.o \
+< 		winnojmp.o winnpc.o winnps.o winpgntc.o winplink.o \
+< 		winproxy.o winsecur.o winser.o winshare.o winstore.o \
+< 		wintime.o winx11.o x11fwd.o -ladvapi32 -lcomctl32 -lcomdlg32 \
+< 		-lgdi32 -limm32 -lole32 -lshell32 -luser32 -lwinmm \
+< 		-lwinspool
+---
+> 		sshdss.o sshecc.o sshgssc.o sshmd5.o sshpubk.o sshrand.o \
+> 		sshrsa.o sshsh256.o sshsh512.o sshsha.o sshshare.o sshzlib.o \
+> 		telnet.o timing.o tree234.o version.o wildcard.o wincapi.o \
+> 		wincons.o windefs.o wingss.o winhandl.o winhsock.o winmisc.o \
+> 		winnet.o winnoise.o winnojmp.o winnpc.o winnps.o winpgntc.o \
+> 		winplink.o winproxy.o winsecur.o winser.o winshare.o \
+> 		winstore.o wintime.o winx11.o x11fwd.o -ladvapi32 -lcomctl32 \
+> 		-lcomdlg32 -lcrypt32 -lgdi32 -limm32 -lole32 -lshell32 \
+> 		-luser32 -lwinmm -lwinspool
+169,175c168,174
+< 		sshdss.o sshgssc.o sshmd5.o sshpubk.o sshrand.o sshrsa.o \
+< 		sshsh256.o sshsh512.o sshsha.o sshshare.o sshzlib.o timing.o \
+< 		tree234.o version.o wildcard.o wincons.o windefs.o wingss.o \
+< 		winhandl.o winhsock.o winmisc.o winnet.o winnoise.o \
+< 		winnojmp.o winnpc.o winnps.o winpgntc.o winproxy.o \
+< 		winsecur.o winsftp.o winshare.o winstore.o wintime.o \
+< 		x11fwd.o
+---
+> 		sshdss.o sshecc.o sshgssc.o sshmd5.o sshpubk.o sshrand.o \
+> 		sshrsa.o sshsh256.o sshsh512.o sshsha.o sshshare.o sshzlib.o \
+> 		timing.o tree234.o version.o wildcard.o wincapi.o wincons.o \
+> 		windefs.o wingss.o winhandl.o winhsock.o winmisc.o winnet.o \
+> 		winnoise.o winnojmp.o winnpc.o winnps.o winpgntc.o \
+> 		winproxy.o winsecur.o winsftp.o winshare.o winstore.o \
+> 		wintime.o x11fwd.o
+181,188c180,187
+< 		sshgssc.o sshmd5.o sshpubk.o sshrand.o sshrsa.o sshsh256.o \
+< 		sshsh512.o sshsha.o sshshare.o sshzlib.o timing.o tree234.o \
+< 		version.o wildcard.o wincons.o windefs.o wingss.o winhandl.o \
+< 		winhsock.o winmisc.o winnet.o winnoise.o winnojmp.o winnpc.o \
+< 		winnps.o winpgntc.o winproxy.o winsecur.o winsftp.o \
+< 		winshare.o winstore.o wintime.o x11fwd.o -ladvapi32 \
+< 		-lcomctl32 -lcomdlg32 -lgdi32 -limm32 -lole32 -lshell32 \
+< 		-luser32 -lwinmm -lwinspool
+---
+> 		sshecc.o sshgssc.o sshmd5.o sshpubk.o sshrand.o sshrsa.o \
+> 		sshsh256.o sshsh512.o sshsha.o sshshare.o sshzlib.o timing.o \
+> 		tree234.o version.o wildcard.o wincapi.o wincons.o windefs.o \
+> 		wingss.o winhandl.o winhsock.o winmisc.o winnet.o winnoise.o \
+> 		winnojmp.o winnpc.o winnps.o winpgntc.o winproxy.o \
+> 		winsecur.o winsftp.o winshare.o winstore.o wintime.o \
+> 		x11fwd.o -ladvapi32 -lcomctl32 -lcomdlg32 -lcrypt32 -lgdi32 \
+> 		-limm32 -lole32 -lshell32 -luser32 -lwinmm -lwinspool
+194,200c193,199
+< 		sshdh.o sshdss.o sshgssc.o sshmd5.o sshpubk.o sshrand.o \
+< 		sshrsa.o sshsh256.o sshsh512.o sshsha.o sshshare.o sshzlib.o \
+< 		timing.o tree234.o version.o wildcard.o wincons.o windefs.o \
+< 		wingss.o winhandl.o winhsock.o winmisc.o winnet.o winnoise.o \
+< 		winnojmp.o winnpc.o winnps.o winpgntc.o winproxy.o \
+< 		winsecur.o winsftp.o winshare.o winstore.o wintime.o \
+< 		x11fwd.o
+---
+> 		sshdh.o sshdss.o sshecc.o sshgssc.o sshmd5.o sshpubk.o \
+> 		sshrand.o sshrsa.o sshsh256.o sshsh512.o sshsha.o sshshare.o \
+> 		sshzlib.o timing.o tree234.o version.o wildcard.o wincapi.o \
+> 		wincons.o windefs.o wingss.o winhandl.o winhsock.o winmisc.o \
+> 		winnet.o winnoise.o winnojmp.o winnpc.o winnps.o winpgntc.o \
+> 		winproxy.o winsecur.o winsftp.o winshare.o winstore.o \
+> 		wintime.o x11fwd.o
+206,213c205,212
+< 		sshgssc.o sshmd5.o sshpubk.o sshrand.o sshrsa.o sshsh256.o \
+< 		sshsh512.o sshsha.o sshshare.o sshzlib.o timing.o tree234.o \
+< 		version.o wildcard.o wincons.o windefs.o wingss.o winhandl.o \
+< 		winhsock.o winmisc.o winnet.o winnoise.o winnojmp.o winnpc.o \
+< 		winnps.o winpgntc.o winproxy.o winsecur.o winsftp.o \
+< 		winshare.o winstore.o wintime.o x11fwd.o -ladvapi32 \
+< 		-lcomctl32 -lcomdlg32 -lgdi32 -limm32 -lole32 -lshell32 \
+< 		-luser32 -lwinmm -lwinspool
+---
+> 		sshecc.o sshgssc.o sshmd5.o sshpubk.o sshrand.o sshrsa.o \
+> 		sshsh256.o sshsh512.o sshsha.o sshshare.o sshzlib.o timing.o \
+> 		tree234.o version.o wildcard.o wincapi.o wincons.o windefs.o \
+> 		wingss.o winhandl.o winhsock.o winmisc.o winnet.o winnoise.o \
+> 		winnojmp.o winnpc.o winnps.o winpgntc.o winproxy.o \
+> 		winsecur.o winsftp.o winshare.o winstore.o wintime.o \
+> 		x11fwd.o -ladvapi32 -lcomctl32 -lcomdlg32 -lcrypt32 -lgdi32 \
+> 		-limm32 -lole32 -lshell32 -luser32 -lwinmm -lwinspool
+217,218c216,217
+< 		miscucs.o pgssapi.o pinger.o portfwd.o proxy.o putty.res.o \
+< 		raw.o rlogin.o sercfg.o settings.o sizetip.o ssh.o sshaes.o \
+---
+> 		pgssapi.o pinger.o portfwd.o proxy.o putty.res.o raw.o \
+> 		rlogin.o sercfg.o settings.o sizetip.o ssh.o sshaes.o \
+220,227c219,227
+< 		sshdh.o sshdss.o sshgssc.o sshmd5.o sshpubk.o sshrand.o \
+< 		sshrsa.o sshsh256.o sshsh512.o sshsha.o sshshare.o sshzlib.o \
+< 		telnet.o terminal.o timing.o tree234.o version.o wcwidth.o \
+< 		wildcard.o wincfg.o winctrls.o windefs.o windlg.o window.o \
+< 		wingss.o winhandl.o winhelp.o winhsock.o winjump.o winmisc.o \
+< 		winnet.o winnoise.o winnpc.o winnps.o winpgntc.o winprint.o \
+< 		winproxy.o winsecur.o winser.o winshare.o winstore.o \
+< 		wintime.o winucs.o winutils.o winx11.o x11fwd.o
+---
+> 		sshdh.o sshdss.o sshecc.o sshgssc.o sshmd5.o sshpubk.o \
+> 		sshrand.o sshrsa.o sshsh256.o sshsh512.o sshsha.o sshshare.o \
+> 		sshzlib.o telnet.o terminal.o timing.o tree234.o version.o \
+> 		wcwidth.o wildcard.o wincapi.o wincfg.o winctrls.o windefs.o \
+> 		windlg.o window.o wingss.o winhandl.o winhelp.o winhsock.o \
+> 		winjump.o winmisc.o winnet.o winnoise.o winnpc.o winnps.o \
+> 		winpgntc.o winprint.o winproxy.o winsecur.o winser.o \
+> 		winshare.o winstore.o wintime.o winucs.o winutils.o winx11.o \
+> 		x11fwd.o
+231,232c231,232
+< 		miscucs.o pgssapi.o pinger.o portfwd.o proxy.o putty.res.o \
+< 		raw.o rlogin.o sercfg.o settings.o sizetip.o ssh.o sshaes.o \
+---
+> 		pgssapi.o pinger.o portfwd.o proxy.o putty.res.o raw.o \
+> 		rlogin.o sercfg.o settings.o sizetip.o ssh.o sshaes.o \
+234,243c234,243
+< 		sshdh.o sshdss.o sshgssc.o sshmd5.o sshpubk.o sshrand.o \
+< 		sshrsa.o sshsh256.o sshsh512.o sshsha.o sshshare.o sshzlib.o \
+< 		telnet.o terminal.o timing.o tree234.o version.o wcwidth.o \
+< 		wildcard.o wincfg.o winctrls.o windefs.o windlg.o window.o \
+< 		wingss.o winhandl.o winhelp.o winhsock.o winjump.o winmisc.o \
+< 		winnet.o winnoise.o winnpc.o winnps.o winpgntc.o winprint.o \
+< 		winproxy.o winsecur.o winser.o winshare.o winstore.o \
+< 		wintime.o winucs.o winutils.o winx11.o x11fwd.o -ladvapi32 \
+< 		-lcomctl32 -lcomdlg32 -lgdi32 -limm32 -lole32 -lshell32 \
+< 		-luser32 -lwinmm -lwinspool
+---
+> 		sshdh.o sshdss.o sshecc.o sshgssc.o sshmd5.o sshpubk.o \
+> 		sshrand.o sshrsa.o sshsh256.o sshsh512.o sshsha.o sshshare.o \
+> 		sshzlib.o telnet.o terminal.o timing.o tree234.o version.o \
+> 		wcwidth.o wildcard.o wincapi.o wincfg.o winctrls.o windefs.o \
+> 		windlg.o window.o wingss.o winhandl.o winhelp.o winhsock.o \
+> 		winjump.o winmisc.o winnet.o winnoise.o winnpc.o winnps.o \
+> 		winpgntc.o winprint.o winproxy.o winsecur.o winser.o \
+> 		winshare.o winstore.o wintime.o winucs.o winutils.o winx11.o \
+> 		x11fwd.o -ladvapi32 -lcomctl32 -lcomdlg32 -lcrypt32 -lgdi32 \
+> 		-limm32 -lole32 -lshell32 -luser32 -lwinmm -lwinspool
+246,250c246,250
+< 		sshbn.o sshdes.o sshdss.o sshdssg.o sshmd5.o sshprime.o \
+< 		sshpubk.o sshrand.o sshrsa.o sshrsag.o sshsh256.o sshsh512.o \
+< 		sshsha.o tree234.o version.o winctrls.o winhelp.o winmisc.o \
+< 		winnoise.o winnojmp.o winpgen.o winstore.o wintime.o \
+< 		winutils.o
+---
+> 		sshbn.o sshdes.o sshdss.o sshdssg.o sshecc.o sshecdsag.o \
+> 		sshmd5.o sshprime.o sshpubk.o sshrand.o sshrsa.o sshrsag.o \
+> 		sshsh256.o sshsh512.o sshsha.o tree234.o version.o wincapi.o \
+> 		winctrls.o winhelp.o winmisc.o winnoise.o winnojmp.o \
+> 		winpgen.o winstore.o wintime.o winutils.o
+253,258c253,259
+< 		sshdes.o sshdss.o sshdssg.o sshmd5.o sshprime.o sshpubk.o \
+< 		sshrand.o sshrsa.o sshrsag.o sshsh256.o sshsh512.o sshsha.o \
+< 		tree234.o version.o winctrls.o winhelp.o winmisc.o \
+< 		winnoise.o winnojmp.o winpgen.o winstore.o wintime.o \
+< 		winutils.o -ladvapi32 -lcomctl32 -lcomdlg32 -lgdi32 -limm32 \
+< 		-lole32 -lshell32 -luser32 -lwinmm -lwinspool
+---
+> 		sshdes.o sshdss.o sshdssg.o sshecc.o sshecdsag.o sshmd5.o \
+> 		sshprime.o sshpubk.o sshrand.o sshrsa.o sshrsag.o sshsh256.o \
+> 		sshsh512.o sshsha.o tree234.o version.o wincapi.o winctrls.o \
+> 		winhelp.o winmisc.o winnoise.o winnojmp.o winpgen.o \
+> 		winstore.o wintime.o winutils.o -ladvapi32 -lcomctl32 \
+> 		-lcomdlg32 -lcrypt32 -lgdi32 -limm32 -lole32 -lshell32 \
+> 		-luser32 -lwinmm -lwinspool
+262,270d262
+< 		miscucs.o nocproxy.o nogss.o pinger.o proxy.o puttytel.res.o \
+< 		raw.o rlogin.o sercfg.o settings.o sizetip.o telnet.o \
+< 		terminal.o timing.o tree234.o version.o wcwidth.o wincfg.o \
+< 		winctrls.o windefs.o windlg.o window.o winhandl.o winhelp.o \
+< 		winhsock.o winjump.o winmisc.o winnet.o winprint.o \
+< 		winproxy.o winser.o winstore.o wintime.o winucs.o winutils.o
+< 	$(CC) -mwindows $(LDFLAGS) -o $@ -Wl,-Map,puttytel.map be_nos_s.o \
+< 		callback.o cmdline.o conf.o config.o dialog.o errsock.o \
+< 		ldisc.o ldiscucs.o logging.o minibidi.o misc.o miscucs.o \
+276,277c268,278
+< 		winstore.o wintime.o winucs.o winutils.o -ladvapi32 \
+< 		-lcomctl32 -lcomdlg32 -lgdi32 -limm32 -lole32 -lshell32 \
+---
+> 		winstore.o wintime.o winucs.o winutils.o
+> 	$(CC) -mwindows $(LDFLAGS) -o $@ -Wl,-Map,puttytel.map be_nos_s.o \
+> 		callback.o cmdline.o conf.o config.o dialog.o errsock.o \
+> 		ldisc.o ldiscucs.o logging.o minibidi.o misc.o nocproxy.o \
+> 		nogss.o pinger.o proxy.o puttytel.res.o raw.o rlogin.o \
+> 		sercfg.o settings.o sizetip.o telnet.o terminal.o timing.o \
+> 		tree234.o version.o wcwidth.o wincfg.o winctrls.o windefs.o \
+> 		windlg.o window.o winhandl.o winhelp.o winhsock.o winjump.o \
+> 		winmisc.o winnet.o winprint.o winproxy.o winser.o winstore.o \
+> 		wintime.o winucs.o winutils.o -ladvapi32 -lcomctl32 \
+> 		-lcomdlg32 -lcrypt32 -lgdi32 -limm32 -lole32 -lshell32 \
+428,433d428
+< miscucs.o: ../miscucs.c ../putty.h ../misc.h ../puttyps.h ../network.h \
+< 		../puttymem.h ../windows/winstuff.h ../macosx/osx.h \
+< 		../unix/unix.h ../tree234.h ../windows/winhelp.h \
+< 		../charset/charset.h
+< 	$(CC) $(COMPAT) $(CFLAGS) $(XFLAGS) -c ../miscucs.c
+< 
+620c615
+< sshbn.o: ../sshbn.c ../misc.h ../sshbn.h ../ssh.h ../puttymem.h ../tree234.h \
+---
+> sshbn.o: ../sshbn.c ../misc.h ../ssh.h ../puttymem.h ../tree234.h \
+647a643,650
+> sshecc.o: ../sshecc.c ../ssh.h ../puttymem.h ../tree234.h ../network.h \
+> 		../int64.h ../misc.h
+> 	$(CC) $(COMPAT) $(CFLAGS) $(XFLAGS) -c ../sshecc.c
+> 
+> sshecdsag.o: ../sshecdsag.c ../ssh.h ../puttymem.h ../tree234.h ../network.h \
+> 		../int64.h ../misc.h
+> 	$(CC) $(COMPAT) $(CFLAGS) $(XFLAGS) -c ../sshecdsag.c
+> 
+674,675c677,678
+< sshrsa.o: ../sshrsa.c ../ssh.h ../misc.h ../puttymem.h ../tree234.h \
+< 		../network.h ../int64.h
+---
+> sshrsa.o: ../sshrsa.c ../ssh.h ../misc.h ../windows/wincapi.h ../puttymem.h \
+> 		../tree234.h ../network.h ../int64.h
+793,798d795
+< 
+< uxpeer.o: ../unix/uxpeer.c ../putty.h ../puttyps.h ../network.h ../misc.h \
+< 		../windows/winstuff.h ../macosx/osx.h ../unix/unix.h \
+< 		../puttymem.h ../tree234.h ../windows/winhelp.h \
+< 		../charset/charset.h
+< 	$(CC) $(COMPAT) $(CFLAGS) $(XFLAGS) -c ../unix/uxpeer.c
